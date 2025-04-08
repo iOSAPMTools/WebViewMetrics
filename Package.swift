@@ -15,8 +15,6 @@ let package = Package(
             targets: ["WebViewAPM"]),
     ],
     dependencies: [
-        // 在这里添加外部依赖项 (如果需要)
-        // .package(url: /* package url */, from: "1.0.0"),
     ],
     targets: [
         // 定义构成库的主要 Target
@@ -29,10 +27,6 @@ let package = Package(
                 // 处理资源文件 (JS 脚本)
                 .process("Resources/JavaScriptAgent.js")
             ]
-        ),
-        // 如果需要，可以添加测试 Target
-        // .testTarget(
-        //     name: "WebViewAPMTests",
-        //     dependencies: ["WebViewAPM"]),
+        )
     ]
 ) 

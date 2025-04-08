@@ -6,11 +6,14 @@
 
 *   自动注入 JavaScript Agent 监控 Web 内容。
 *   通过 `WKScriptMessageHandler` 实现 JS 与 Native 高效通信。
-*   收集 Web Vitals、资源加载、JS 错误等性能数据（*具体指标取决于 JS Agent 实现*）。
+*   收集页面加载、JS 错误、API 调用、资源加载等性能指标 (*具体指标取决于 JS Agent 实现*)。
 *   可配置的数据上报接口 (`DataUploader`)。
 *   支持运行时启用/禁用 SDK。
 *   提供内部日志系统，支持 Debug 模式。
 *   支持使用自定义 JavaScript Agent 脚本。
+*   支持数据**批处理 (Batching)** 上传，减少网络请求次数。
+*   支持**定时上传 (Timed Uploads)**，确保数据定期发送。
+*   内置**离线缓存 (Offline Caching)** 机制，在上传失败或应用离线时保存数据，提高数据可靠性。
 
 ## 环境要求
 
@@ -30,7 +33,7 @@
 
 ### 1. 配置与初始化
 
-在使用 SDK 之前，需要先进行初始化配置。
+在使用 SDK 之前，需要先进行初始化配置。你需要提供一个实现了 `DataUploader` 协议的对象，并可以调整批处理大小和上传间隔等参数。
 
 ```swift
 import WebViewAPM
@@ -87,6 +90,8 @@ var config = APMConfiguration(dataUploader: uploader)
 // 可选配置：
 config.isEnabled = true // 控制是否启用 SDK (默认为 true)
 config.messageHandlerName = "webviewAPMHandler" // JS 调用 Native 的 Handler 名称 (默认为 "webviewAPM")
+config.batchSize = 50 // 缓冲区达到多少条记录时触发上传 (例如，默认为 100)
+config.uploadInterval = 60.0 // 定时检查上传的时间间隔（秒）(例如，默认为 300.0)
 // config.jsAgentScript = "window.myCustomAgent = true; console.log('My custom JS agent loaded!'); window.webkit.messageHandlers.\(config.messageHandlerName).postMessage({type: 'custom', data: 'hello'});" // 可选：提供完整的自定义 JS 脚本字符串
 
 // 3. 初始化 SDK (通常在应用启动时调用，例如 AppDelegate 或 SceneDelegate)
@@ -170,17 +175,20 @@ WebViewAPM.initialize(configuration: config)
 
 ## 数据处理
 
-数据收集和处理流程大致如下：
+SDK 内部的数据处理流程设计旨在平衡实时性、效率和可靠性：
 
-1.  JS Agent 在 WebView 中运行，收集性能指标和事件。
-2.  JS Agent 通过配置的 `messageHandlerName` (`window.webkit.messageHandlers[name].postMessage(...)`) 将数据发送到 Native 端。
-3.  SDK 内部的 `MessageHandlerDelegate` 接收到 JS 消息。
-4.  `MessageHandlerDelegate` 将原始数据传递给 `DataProcessor` (SDK 内部组件)。
-5.  `DataProcessor` 对数据进行处理、缓存或聚合（具体行为取决于其实现）。
-6.  `DataProcessor` 在适当的时机（例如达到缓存阈值、定时）调用你提供的 `DataUploader` 实例的 `upload(data:completion:)` 方法。
-7.  你的 `DataUploader` 实现负责将数据发送到你的后端服务器。
+1.  **收集与接收**: JS Agent 在 WebView 中收集性能指标和事件，并通过配置的 `messageHandlerName` 发送给 Native 端的 `MessageHandlerDelegate`。
+2.  **缓冲**: `MessageHandlerDelegate` 将接收到的原始记录 (`APMRecordable`) 传递给内部的 `DataProcessor`。`DataProcessor` 将记录暂时存放在内存**缓冲区 (Buffer)** 中。
+3.  **批处理触发**: 当缓冲区中的记录数量达到配置的 `batchSize` 时，`DataProcessor` 会触发一次上传尝试。
+4.  **定时触发**: 同时，`DataProcessor` 会根据配置的 `uploadInterval`（单位：秒）**定时检查**缓冲区。如果缓冲区中有数据，也会触发一次上传尝试。
+5.  **离线缓存**: 在**尝试上传之前**，`DataProcessor` 会将当前批次的数据**写入本地文件缓存**（位于应用的 Caches 目录下）。这确保了即使上传失败或应用退出，数据也不会丢失。
+6.  **上传调用**: `DataProcessor` 调用你提供的 `DataUploader` 实例的 `upload(data:completion:)` 方法，将序列化后的数据（通常是 JSON 格式的记录数组）传递给它。
+7.  **结果处理**:
+    *   如果你的 `DataUploader` 通过 `completion(true)` 回调表示**上传成功**，`DataProcessor` 会**删除对应的本地缓存文件**。
+    *   如果上传**失败** (`completion(false)`)，`DataProcessor` 会**保留该缓存文件**，数据将在后续的批处理或定时触发，或者下次应用启动时尝试重新上传。
+8.  **启动时加载缓存**: SDK 初始化时，`DataProcessor` 会自动检查缓存目录，加载之前未成功上传的数据文件到内存缓冲区，并尝试再次上传。
 
-核心在于你需要提供一个可靠的 `DataUploader` 实现来完成最终的数据持久化或分析。
+因此，你的 `DataUploader` 实现只需要专注于执行单次上传的网络请求逻辑即可，SDK 会处理好缓冲、触发时机、缓存和重试加载的机制。
 
 ## 日志记录
 
@@ -203,4 +211,4 @@ SDK 内部使用 `InternalLogger` 进行日志记录。
 
 ## 许可证
 
-MIT License (./LICENSE)
+MIT License (*请替换为实际的许可证*)
