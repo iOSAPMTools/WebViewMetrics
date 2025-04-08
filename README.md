@@ -17,16 +17,14 @@
 
 ## 环境要求
 
-*   iOS 11.0+ / macOS 10.13+ （*请根据项目实际情况调整*）
-*   Swift 5.3+ （*请根据项目实际情况调整*）
-*   Xcode 12.0+ （*请根据项目实际情况调整*）
+*   iOS 13+
 
 ## 安装
 
 ### Swift Package Manager
 
 1.  在 Xcode 中，选择 `File` > `Swift Packages` > `Add Package Dependency...`
-2.  输入仓库 URL: `https://github.com/your-username/WebViewAPM.git` (*请替换为实际的仓库 URL*)
+2.  输入仓库 URL: `https://github.com/iOSAPMTools/WebViewMetrics.git` (*请替换为实际的仓库 URL*)
 3.  选择合适的版本规则，然后点击 `Add Package`。
 
 ## 使用方法
@@ -211,4 +209,4 @@ SDK 内部使用 `InternalLogger` 进行日志记录。
 
 ## 许可证
 
-MIT License (*请替换为实际的许可证*)
+[MIT License](LICENSE)
